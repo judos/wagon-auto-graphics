@@ -1,11 +1,11 @@
 
 
-data:extend(
-{
+data:extend({
 	-- alle neuen 4A-Cargo-Waggons	
 	{
 		type = "cargo-wagon",
 		name = "wag-coal-wagon",
+		order = "zzz",
 		icon = "__wagonAutoGraphics__/graphics/wagons/4aw_cw_coal_icon.png",icon_size = 32,
 		flags = {"placeable-neutral", "player-creation", "placeable-off-grid", },
 		inventory_size = 30,
@@ -68,6 +68,7 @@ data:extend(
 	{
 		type = "cargo-wagon",
 		name = "wag-iron-wagon",
+		order = "zzz",
 		icon = "__wagonAutoGraphics__/graphics/wagons/4aw_cw_iron_icon.png",icon_size = 32,
 		flags = {"placeable-neutral", "player-creation", "placeable-off-grid", },
 		inventory_size = 30,
@@ -124,6 +125,7 @@ data:extend(
 	{
 		type = "cargo-wagon",
 		name = "wag-copper-wagon",
+		order = "zzz",
 		icon = "__wagonAutoGraphics__/graphics/wagons/4aw_cw_copper_icon.png",icon_size = 32,
 		flags = {"placeable-neutral", "player-creation", "placeable-off-grid", },
 		inventory_size = 30,
@@ -180,6 +182,7 @@ data:extend(
 	{
 		type = "cargo-wagon",
 		name = "wag-stone-wagon",
+		order = "zzz",
 		icon = "__wagonAutoGraphics__/graphics/wagons/4aw_cw_stone_icon.png",icon_size = 32,
 		flags = {"placeable-neutral", "player-creation", "placeable-off-grid", },
 		inventory_size = 30,
@@ -236,6 +239,7 @@ data:extend(
 	{
 		type = "cargo-wagon",
 		name = "wag-wood-wagon",
+		order = "zzz",
 		icon = "__wagonAutoGraphics__/graphics/wagons/4aw_cargo_wood_icon.png",
 		icon_size = 32,
 		flags = {"placeable-neutral", "player-creation", "placeable-off-grid", },
@@ -289,4 +293,4 @@ data:extend(
 		sound_minimum_speed = 0.5;
 		vehicle_impact_sound =  { filename = "__base__/sound/car-wood-impact.ogg", volume = 1.0 },
 	},
-}
+})
