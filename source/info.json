@@ -1,0 +1,10 @@
+{
+	"name": "wagonAutoGraphics",
+	"version": "0.1.8",
+	"title": "Wagon Auto Graphics",
+	"author": "judos",
+	"description": "Cargo-wagons automatically adapt graphics according to content, graphics by Yuoki Industries",
+	"dependencies": ["base >= 0.18.0"],
+	"homepage": "https://github.com/judos/wagonAutoGraphics",
+	"factorio_version": "0.18"
+}
