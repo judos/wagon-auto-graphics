@@ -1,0 +1,148 @@
+local private = {}
+local id = nil
+
+script.on_init(private.on_init)
+script.on_configuration_changed(private.on_init)
+
+private.on_init = function()
+	global = global or {}
+	global.version = global.version or 1
+	global.monitored = global.monitored or {} -- key = string id of train, value is table of monitored train
+	global.schedule = global.schedule or {} -- [tick][nr] = {$trainId} --train table
+end
+
+
+script.on_event(defines.events.on_train_created, function(event)
+	if event.old_train_id_1 then
+		private.unmonitor(event.old_train_id_1)
+	end
+	if event.old_train_id_2 then
+		private.unmonitor(event.old_train_id_2)
+	end
+	private.monitor(event.train)
+end)
+
+
+script.on_event(defines.events.on_train_changed_state, function(event)
+	local train = event.train
+	if train.state == defines.train_state.manual_control then
+		if train.speed == 0 then
+			private.unmonitor(train.id)
+		else
+			private.monitor(train)
+		end
+	elseif train.state == defines.train_state.wait_station or train.state == defines.train_state.no_schedule
+			or train.state == defines.train_state.no_path then
+		private.monitor(train)
+	end
+end)
+
+
+script.on_event(defines.events.on_tick, function(event)
+	private.on_init() -- TODO: remove after dev
+	if global.schedule[game.tick] == nil then
+		return
+	end
+	for _,trainId in pairs(global.schedule[game.tick]) do
+		local t = global.monitored[""..trainId]
+		if t then
+			local train = t.train
+			if train.valid then
+				private.checkTrain(train)
+				if train.valid then
+					private.scheduleAdd(train, 30)
+				end
+			end
+		end
+	end
+	global.schedule[game.tick] = nil
+end)
+
+-- Updating trains
+
+private.checkTrain = function(oldTrain)
+	local replaced = false
+	local train = oldTrain
+	local sp = train.speed
+	local mode = train.manual_mode
+	for _, wagon in pairs(train.cargo_wagons) do
+		train = private.checkCargoWagon(train, wagon)
+	end
+	if train ~= oldTrain then
+		train.speed = sp
+		train.manual_mode = mode
+	end
+end
+
+private.checkCargoWagon = function(train, wagon)
+	local content = wagon.get_inventory(defines.inventory.cargo_wagon).get_contents()
+	local shouldBe = private.targetCargoWagonForCargo(content)
+	local is = wagon.name
+	if is ~= shouldBe then
+		local newWagon = private.replaceWagon(wagon, shouldBe)
+		private.addCargo(newWagon, content)
+		return newWagon.train
+	end
+	return train
+end
+
+private.replaceWagon = function(wagon, shouldBe)
+	local pos = wagon.position
+	local force = wagon.force
+	local surface = wagon.surface
+	wagon.destroy()
+	return surface.create_entity{name=shouldBe,position=pos, force=force}
+end
+
+private.targetCargoWagonForCargo = function(content)
+	local types = 0
+	local name = ""
+	local nameTable = {
+		["iron-ore"]="wag-iron-wagon", ["copper-ore"]="wag-copper-wagon", ["stone"]="wag-stone-wagon",
+		["wood"]="wag-wood-wagon", ["coal"]="wag-coal-wagon"
+	}
+	for key, amount in pairs(content) do
+		types = types + 1
+		if nameTable[key] then name = nameTable[key] end
+	end
+	if types > 1 or name == "" then
+		name = "cargo-wagon"
+	end
+	return name
+end
+
+private.addCargo = function(wagon, content)
+	local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+	for itemName, amount in pairs(content) do
+		inventory.insert{name=itemName, count=amount}
+	end
+end
+
+--- Monitoring trains
+
+private.monitor = function(train)
+	if not global.monitored[""..train.id] then
+		global.monitored[""..train.id] = {
+			train=train,
+		}
+		private.scheduleAdd(train)
+	end
+end
+
+private.unmonitor = function(trainId)
+	global.monitored[""..trainId] = nil
+end
+
+
+private.scheduleAdd = function(train, inTicks)
+	inTicks = inTicks or 0
+	local tick = game.tick + 1 + inTicks
+	if train == nil then
+		err("scheduleAdd can't be called for nil train")
+		return nil
+	end
+	if global.schedule[tick] == nil then
+		global.schedule[tick] = {}
+	end
+	table.insert(global.schedule[tick], train.id)
+end
