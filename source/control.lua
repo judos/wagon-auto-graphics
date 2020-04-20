@@ -1,5 +1,9 @@
 local private = {}
-local id = nil
+
+local activeWagons = {
+		["iron-ore"]=1, ["copper-ore"]=1, ["stone"]=1,
+		["wood"]=1, ["coal"]=1
+	}
 
 script.on_init(private.on_init)
 script.on_configuration_changed(private.on_init)
@@ -78,7 +82,7 @@ private.checkCargoWagon = function(train, wagon)
 	local content = wagon.get_inventory(defines.inventory.cargo_wagon).get_contents()
 	local shouldBe = private.targetCargoWagonForCargo(content)
 	local is = wagon.name
-	if is ~= shouldBe then
+	if is ~= shouldBe and (is == "cargo-wagon" or activeWagons[is:sub(5,-7)]==1) then
 		local newWagon = private.replaceWagon(wagon, shouldBe)
 		private.addCargo(newWagon, content)
 		return newWagon.train
@@ -97,13 +101,9 @@ end
 private.targetCargoWagonForCargo = function(content)
 	local types = 0
 	local name = ""
-	local nameTable = {
-		["iron-ore"]="wag-iron-wagon", ["copper-ore"]="wag-copper-wagon", ["stone"]="wag-stone-wagon",
-		["wood"]="wag-wood-wagon", ["coal"]="wag-coal-wagon"
-	}
 	for key, amount in pairs(content) do
 		types = types + 1
-		if nameTable[key] then name = nameTable[key] end
+		if activeWagons[key] then name = "wag-"..key.."-wagon" end
 	end
 	if types > 1 or name == "" then
 		name = "cargo-wagon"
