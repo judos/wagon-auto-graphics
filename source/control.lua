@@ -30,7 +30,7 @@ end)
 script.on_event(defines.events.on_train_changed_state, function(event)
 	local train = event.train
 	if train.state == defines.train_state.manual_control then
-		if train.speed == 0 then
+		if train.speed ~= 0 then
 			private.unmonitor(train.id)
 		else
 			private.monitor(train)
