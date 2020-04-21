@@ -1,9 +1,17 @@
 local private = {}
 
-local activeWagons = {
+-- item to wagon mapping
+local activeWagonsMapping = {
 		["iron-ore"]=1, ["copper-ore"]=1, ["stone"]=1,
-		["wood"]=1, ["coal"]=1
-	}
+		["wood"]=1, ["coal"]=1, ["steel-plate"]=1, ["stone-brick"]=1,
+		["iron-plate"]="plate", ["copper-plate"]="plate",
+		["water"]=1, ["crude-oil"]=1, ["petroleum-gas"]=1, ["light-oil"]=1, ["heavy-oil"]=1, ["sulfuric-acid"]=1
+}
+-- whether wagon with name "wag-...-wagon" may be transformed (all mappings above may be transformed)
+local activeWagons = {
+	["stuff"]=1, ["closed"]=1, ["plate"]=1
+}
+
 
 script.on_init(private.on_init)
 script.on_configuration_changed(private.on_init)
@@ -70,7 +78,12 @@ private.checkTrain = function(oldTrain)
 	local sp = train.speed
 	local mode = train.manual_mode
 	for _, wagon in pairs(train.cargo_wagons) do
-		train = private.checkCargoWagon(train, wagon)
+		local content = wagon.get_inventory(defines.inventory.cargo_wagon).get_contents()
+		train = private.checkWagon(train, wagon, content, false)
+	end
+	for _, wagon in pairs(train.fluid_wagons) do
+		local content = wagon.get_fluid_contents()
+		train = private.checkWagon(train, wagon, content, true)
 	end
 	if train ~= oldTrain then
 		train.speed = sp
@@ -78,16 +91,22 @@ private.checkTrain = function(oldTrain)
 	end
 end
 
-private.checkCargoWagon = function(train, wagon)
-	local content = wagon.get_inventory(defines.inventory.cargo_wagon).get_contents()
-	local shouldBe = private.targetCargoWagonForCargo(content)
+private.checkWagon = function(train, wagon, content, isFluid)
+	if not private.mayTransformWagon(wagon.name) then return train end
+	local shouldBe = private.targetWagonForContent(content, isFluid)
 	local is = wagon.name
-	if is ~= shouldBe and (is == "cargo-wagon" or activeWagons[is:sub(5,-7)]==1) then
+	if is ~= shouldBe then
 		local newWagon = private.replaceWagon(wagon, shouldBe)
-		private.addCargo(newWagon, content)
+		private.addCargo(newWagon, content, isFluid)
 		return newWagon.train
 	end
 	return train
+end
+
+private.mayTransformWagon = function(name)
+	if name == "cargo-wagon" or name == "fluid-wagon" then return true end
+	local middle = name:sub(5,-7) -- remove "wag-" prefix and "-wagon" postfix
+	return activeWagons[middle] or activeWagonsMapping[middle]
 end
 
 private.replaceWagon = function(wagon, shouldBe)
@@ -98,23 +117,37 @@ private.replaceWagon = function(wagon, shouldBe)
 	return surface.create_entity{name=shouldBe,position=pos, force=force}
 end
 
-private.targetCargoWagonForCargo = function(content)
+private.targetWagonForContent = function(content, isFluid)
 	local types = 0
 	local name = ""
 	for key, amount in pairs(content) do
 		types = types + 1
-		if activeWagons[key] then name = "wag-"..key.."-wagon" end
+		if activeWagonsMapping[key] == 1 then 
+			name = "wag-"..key.."-wagon" 
+		elseif activeWagonsMapping[key] then
+			name = "wag-"..activeWagonsMapping[key].."-wagon"
+		end
 	end
-	if types > 1 or name == "" then
-		name = "cargo-wagon"
+	if types >= 4 then
+		name = "wag-stuff-wagon"
+	elseif types >= 2 then
+		name = "wag-closed-wagon"
+	elseif name == "" then
+		name = isFluid and "fluid-wagon" or "cargo-wagon"
 	end
 	return name
 end
 
-private.addCargo = function(wagon, content)
-	local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
-	for itemName, amount in pairs(content) do
-		inventory.insert{name=itemName, count=amount}
+private.addCargo = function(wagon, content, isFluid)
+	if isFluid then
+		for name, amount in pairs(content) do
+			wagon.insert_fluid{name=name, amount=amount}
+		end
+	else
+		local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+		for itemName, amount in pairs(content) do
+			inventory.insert{name=itemName, count=amount}
+		end
 	end
 end
 
